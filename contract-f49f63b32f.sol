@@ -1,61 +1,63 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts@4.8.1/token/ERC20/ERC20.sol";
-interface ERC20Interface{
-    function totalSupply() external view returns(uint);
-    function balanceOf(address account) external view returns (uint balance);
-    function allowance(address owner, address spender) external view returns (uint remaining);
-    function transfer(address receipent,uint amount) external returns (bool success);
-    function approve(address spender,uint amount) external returns (bool success);
-    function transferFrom(address sender,address receipent,uint amount) external returns (bool success);
-    event Transfer(address indexed from,address indexed to, uint value);
-    event Approval(address indexed owner,address indexed spender, uint value);
-}
-contract TestSolana is ERC20Interface {
-    string public symbol;
-    string public name;
-    uint8 public decimals;
-    uint public _totalSupply;
-    mapping(address=>uint) balances;
-    mapping(address=>mapping(address=>uint)) allowed;
+import "@openzeppelin/contracts@4.8.2/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts@4.8.2/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts@4.8.2/security/Pausable.sol";
+import "@openzeppelin/contracts@4.8.2/access/Ownable.sol";
+import "@openzeppelin/contracts@4.8.2/token/ERC20/extensions/draft-ERC20Permit.sol";
+import "@openzeppelin/contracts@4.8.2/token/ERC20/extensions/ERC20Votes.sol";
 
-
-    constructor() {
-       symbol="ONX";
-       name="NewTest Coin";
-       decimals =18;
-       _totalSupply=1_000_001_000_000_000_000_000;
-       balances[0xF9bDDCe3C4D1C77FD7d9eB4705F12418353049d6]=_totalSupply;
-       emit Transfer(address(0),0xF9bDDCe3C4D1C77FD7d9eB4705F12418353049d6,_totalSupply);
-    }
-    function totalSupply() public view returns (uint ){
-        return _totalSupply-balances[address(0)];
-    }
-    function balanceOf(address account) public view returns(uint balance){
-        return balances[account];
-    }
-    function transfer(address receipent,uint amount) public returns(bool success){
-        balances[msg.sender]=balances[msg.sender]-amount;
-        balances[receipent]=balances[receipent]+amount;
-        emit Transfer(msg.sender,receipent,amount);
-        return true;
-    }
-    function approve(address spender,uint amount)public returns(bool success){
-        allowed[msg.sender][spender]=amount;
-        emit Approval(msg.sender,spender,amount);
-        return true;
+contract Infinity is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit, ERC20Votes {
+    address public _owner;
+    constructor() ERC20("Infinity", "INF") ERC20Permit("Infinity") {
+        _owner = msg.sender;
     }
 
-    function transferFrom(address sender,address receipent,uint amount)public returns(bool success){
-        balances[sender]=balances[sender]-amount;
-        allowed[sender][msg.sender]=allowed[sender][msg.sender]-amount;
-        balances[receipent]=balances[receipent]+amount;
-        emit Transfer(sender,receipent,amount);
-        return true;
-    }
-    function allowance(address owner,address spender)public view returns(uint remaining){
-        return allowed[owner][spender];
+    function pause() public onlyOwner {
+        _pause();
     }
 
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function mint(address to, uint amount) public onlyOwner whenNotPaused {
+        _mint(to, amount);
+    }
+    
+    function burn(address to, uint amount) public onlyOwner whenNotPaused {
+        _burn(to, amount);
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+        internal
+        whenNotPaused
+        override
+    {
+        super._beforeTokenTransfer(from, to, amount);
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function _afterTokenTransfer(address from, address to, uint256 amount)
+        internal
+        override(ERC20, ERC20Votes)
+    {
+        super._afterTokenTransfer(from, to, amount);
+    }
+
+    function _mint(address to, uint256 amount)
+        internal
+        override(ERC20, ERC20Votes)
+    {
+        super._mint(to, amount);
+    }
+
+    function _burn(address account, uint256 amount)
+        internal
+        override(ERC20, ERC20Votes)
+    {
+        super._burn(account, amount);
+    }
 }
